@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocuChat</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap');
+
+body {
+    margin: 0;
+    font-family: Inter, sans-serif;
+    height: 100vh;
+    display: flex;
+    color: #e6e6e6;
+    background: radial-gradient(circle at center, #2a2a2a 0%, #1f1f1f 45%, #161616 100%);
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 90px;
+    background: linear-gradient(to bottom, #1c1c1c, #141414);
+    border-right: 1px solid #2a2a2a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 18px;
+}
+
+.icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    color: #e6e6e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: 0.15s;
+}
+
+.icon:hover {
+    transform: scale(1.05);
+}
+
+/* MAIN */
+.main {
+    flex: 1;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.center-area {
+    text-align: center;
+    margin-bottom: 120px;
+}
+
+.logo {
+    font-size: 40px;
+    margin-bottom: 10px;
+    filter: drop-shadow(0 0 14px rgba(255,255,255,0.08));
+}
+
+/* MESSAGES */
+.messages {
+    width: 700px;
+    max-width: 90%;
+    text-align: left;
+}
+
+.msg {
+    margin-bottom: 14px;
+    line-height: 1.5;
+}
+
+/* COMPOSER */
+.composer-wrapper {
+    position: absolute;
+    bottom: 40px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+.composer {
+    width: 820px;
+    max-width: 92%;
+    background: linear-gradient(145deg, #2d2d2d, #242424);
+    border: 1px solid #3a3a3a;
+    box-shadow:
+        0 10px 30px rgba(0,0,0,0.6),
+        inset 0 1px 0 rgba(255,255,255,0.05);
+    border-radius: 35px;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.composer input {
+    background: transparent;
+    color: #e6e6e6;
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 14px;
+}
+
+/* Upload button */
+.icon-btn {
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0.8;
+}
+
+.icon-btn:hover {
+    opacity: 1;
+}
+
+/* MODEL SELECTOR */
+.model {
+    background: #1f1f1f;
+    color: #e6e6e6;
+    border: 1px solid #3a3a3a;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+/* SEND BUTTON */
+.send-btn {
+    border: none;
+    background: #3a3a3a;
+    color: white;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.15s;
+}
+
+.send-btn:hover {
+    background: #4a4a4a;
+    transform: scale(1.05);
+}
+
+/* Loading Spinner */
+.spinner {
+    width: 18px;
+    height: 18px;
+    border: 3px solid rgba(255,255,255,0.2);
+    border-top: 3px solid #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 8px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+    <div class="icon" onclick="newChat()">➕</div>
+    <div class="icon">⚙</div>
+</div>
+
+<div class="main">
+    <div class="center-area">
+        <div class="logo">Ask Me</div>
+        <div id="messages" class="messages"></div>
+    </div>
+
+    <div class="composer-wrapper">
+        <div class="composer">
+
+            <input type="file" id="fileInput" style="display:none" onchange="uploadFile()">
+            <button class="icon-btn" onclick="document.getElementById('fileInput').click()">📎</button>
+
+            <input id="query" placeholder="Send a message...">
+
+            <select id="model" class="model">
+              <option value="llama3">Llama3 (Recommended)</option>
+              <option value="llama3:8b">Llama3 8B Fast</option>
+              <option value="gemma:2b">Gemma Ultra Fast</option>
+            </select>
+
+            <button class="send-btn" onclick="sendQuery()">↑</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const messages = document.getElementById("messages");
+
+let loadingMsg = null;
+
+function showLoading(text = "Thinking...") {
+    const div = document.createElement("div");
+    div.className = "msg";
+    div.innerHTML = `<b>AI:</b> ${text} <span class="spinner"></span>`;
+    messages.appendChild(div);
+    loadingMsg = div;
+}
+
+function removeLoading() {
+    if (loadingMsg) {
+        loadingMsg.remove();
+        loadingMsg = null;
+    }
+}
+
+function uploadFile() {
+    const file = document.getElementById("fileInput").files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    addMessage("Uploading: " + file.name);
+    showLoading("Uploading file...");
+
+    fetch("http://127.0.0.1:5000/upload", {
+        method: "POST",
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        removeLoading();
+        addMessage(data.message);
+    })
+    .catch(err => {
+        removeLoading();
+        addMessage("Upload failed ❌");
+    });
+}
+
+function newChat() {
+    messages.innerHTML = "";
+
+    fetch("/reset", { method: "POST" })
+        .then(() => console.log("Session reset"));
+}
+
+function addMessage(text, sender="bot") {
+    const div = document.createElement("div");
+    div.className = "msg";
+    div.innerHTML = sender === "user" ? "<b>You:</b> " + text : "<b>AI:</b> " + text;
+    messages.appendChild(div);
+}
+
+async function sendQuery() {
+    let query = document.getElementById("query").value;
+    let model = document.getElementById("model").value;
+    if (!query) return;
+
+    addMessage(query, "user");
+    document.getElementById("query").value = "";
+
+    // Show thinking spinner
+    showLoading("Thinking...");
+
+    try {
+        const res = await fetch("/chat", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ query, model })
+        });
+
+        const data = await res.json();
+        removeLoading();
+        addMessage(data.answer);
+    } catch (err) {
+        removeLoading();
+        addMessage("AI failed to respond ❌");
+    }
+}
+
+document.getElementById("query").addEventListener("keypress", e => {
+    if (e.key === "Enter") sendQuery();
+});
+
+// Auto clear chat on page load
+window.onload = () => {
+    newChat();
+};
+</script>
+
+</body>
+</html>

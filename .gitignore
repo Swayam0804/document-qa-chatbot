@@ -1,0 +1,6 @@
+vectorstore/
+uploads/
+__pycache__/
+*.pyc
+.env
+*.pkl
